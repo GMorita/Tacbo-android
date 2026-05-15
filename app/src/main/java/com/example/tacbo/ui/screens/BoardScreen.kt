@@ -153,8 +153,8 @@ class Field {
     var horizontal: Float = 68f
 
     var divisionLineIsHidden: Boolean = false
-    var laneNum: Int = 1
-    var zoneNum: Int = 1
+    var laneNum: Int = 2
+    var zoneNum: Int = 3
 
     val defaultPlayerSizeMeter: Float = 1.8f
 

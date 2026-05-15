@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import com.example.tacbo.ui.common.FieldConstants
 import com.example.tacbo.ui.screens.Field
@@ -132,6 +133,36 @@ fun FieldCanvas(modifier: Modifier = Modifier,
             center = Offset(x = size.width * 0.5f, y = size.height * 0.5f),
             style = Stroke(width = lineWidth)
         )
+
+        // Draw Lanes (Vertical lines)
+        if (!field.divisionLineIsHidden && field.laneNum > 1) {
+            val dashEffect = PathEffect.dashPathEffect(floatArrayOf(1f * scaleMeterToPix, 1f * scaleMeterToPix), 0f)
+            for (i in 1 until field.laneNum) {
+                val x = fieldTopLeftPixX + (fieldWidthPix / field.laneNum) * i
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x = x, y = fieldTopLeftPixY),
+                    end = Offset(x = x, y = fieldTopLeftPixY + fieldHeightPix),
+                    strokeWidth = lineWidth * 0.5f,
+                    pathEffect = dashEffect
+                )
+            }
+        }
+
+        // Draw Zones (Horizontal lines)
+        if (!field.divisionLineIsHidden && field.zoneNum > 1) {
+            val dashEffect = PathEffect.dashPathEffect(floatArrayOf(1f * scaleMeterToPix, 1f * scaleMeterToPix), 0f)
+            for (i in 1 until field.zoneNum) {
+                val y = fieldTopLeftPixY + (fieldHeightPix / field.zoneNum) * i
+                drawLine(
+                    color = lineColor,
+                    start = Offset(x = fieldTopLeftPixX, y = y),
+                    end = Offset(x = fieldTopLeftPixX + fieldWidthPix, y = y),
+                    strokeWidth = lineWidth * 0.5f,
+                    pathEffect = dashEffect
+                )
+            }
+        }
 
         drawCircle(
             color = lineColor,
