@@ -216,16 +216,20 @@ class Board {
     var delay: Double = 0.0
     var fieldData: Field = Field()
     var teamDataP1: Team = Team().apply {
-        getPlayerList().forEach {
+        labelIsHidden = false
+        getPlayerList().forEachIndexed { index, it ->
             it.position.x = (0..100).random().toFloat() / 100f
             it.position.y = (0..100).random().toFloat() / 100f
+            it.name = "P1-${index + 1}"
         }
     }
     var teamDataP2: Team = Team().apply {
         color = Color.Blue
-        getPlayerList().forEach {
+        labelIsHidden = false
+        getPlayerList().forEachIndexed { index, it ->
             it.position.x = (0..100).random().toFloat() / 100f
             it.position.y = (0..100).random().toFloat() / 100f
+            it.name = "P2-${index + 1}"
         }
     }
 }
@@ -250,16 +254,19 @@ fun FieldView(board: Board = Board()) {
 
 @Composable
 fun TeamView(modifier: Modifier = Modifier, teamData: Team = Team(), fieldBounds: FieldBounds) {
+    if (teamData.isHidden) return
+
     Box(
         modifier = modifier
     ) {
         val playerList = teamData.getPlayerList()
         playerList.forEach { player ->
 
-            DraggableBox(
-                position = player.position,
+            PlayerView(
+                player = player,
                 fieldBounds = fieldBounds,
-                color = teamData.color
+                color = teamData.color,
+                labelIsHidden = teamData.labelIsHidden
             )
 
 
@@ -268,10 +275,15 @@ fun TeamView(modifier: Modifier = Modifier, teamData: Team = Team(), fieldBounds
 }
 
 @Composable
-fun DraggableBox(position: PlayerPosition, fieldBounds: FieldBounds, color: Color = Color.Blue) {
+fun PlayerView(
+    player: Player,
+    fieldBounds: FieldBounds,
+    color: Color = Color.Blue,
+    labelIsHidden: Boolean = false
+) {
 
-    var positionX by remember { mutableFloatStateOf(position.x) }
-    var positionY by remember { mutableFloatStateOf(position.y) }
+    var positionX by remember { mutableFloatStateOf(player.position.x) }
+    var positionY by remember { mutableFloatStateOf(player.position.y) }
 
     val density = LocalDensity.current
     val boxSize = 40.dp
@@ -280,7 +292,7 @@ fun DraggableBox(position: PlayerPosition, fieldBounds: FieldBounds, color: Colo
     val centerX = fieldBounds.fieldTopLeft.x + positionX * fieldBounds.fieldSize.width
     val centerY = fieldBounds.fieldTopLeft.y + positionY * fieldBounds.fieldSize.height
 
-    Box(
+    Column(
         modifier = Modifier
             .offset {
                 IntOffset(
@@ -288,18 +300,30 @@ fun DraggableBox(position: PlayerPosition, fieldBounds: FieldBounds, color: Colo
                     (centerY - boxSizePx / 2).roundToInt()
                 )
             }
-            .size(boxSize)
-            .background(color.copy(alpha = 0.5f), shape = RoundedCornerShape(20.dp))
             .pointerInput(fieldBounds) {
                 detectDragGestures { change, dragAmount ->
                     change.consume()
                     positionX += dragAmount.x / fieldBounds.fieldSize.width
                     positionY += dragAmount.y / fieldBounds.fieldSize.height
-                    position.x = positionX
-                    position.y = positionY
+                    player.position.x = positionX
+                    player.position.y = positionY
                 }
-            }
-    )
+            },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(boxSize)
+                .background(color.copy(alpha = 0.5f), shape = RoundedCornerShape(20.dp))
+        )
+        if (!labelIsHidden) {
+            Text(
+                text = player.name,
+                fontSize = 12.sp,
+                color = Color.Black
+            )
+        }
+    }
 }
 
 @Preview
