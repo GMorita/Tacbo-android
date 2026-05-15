@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Tacbo</string>
+    <string name="back_button">Back</string>
+    <string name="app_header">アプリのヘッダー</string>
+    <string name="app_footer">アプリのFooter</string>
+</resources>
