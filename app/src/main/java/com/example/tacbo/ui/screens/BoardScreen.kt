@@ -79,6 +79,7 @@ fun BoardScreen(navController: NavController) {
 
             Spacer(modifier = Modifier.weight(1f))
 
+            
             BoardFooterView(modifier = Modifier.fillMaxWidth())
         }
     }
