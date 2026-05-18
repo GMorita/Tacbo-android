@@ -2,6 +2,8 @@ package com.example.tacbo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,13 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -64,6 +70,11 @@ class Player {
     var name: String = ""
 }
 
+data class StrokeData(
+    val points: List<Offset>,
+    val color: Color
+)
+
 class Team {
     var color: Color = Color.Red
     var playerSize: Float = 1.8f
@@ -81,8 +92,8 @@ class Team {
     var player10 = Player()
     var player11 = Player()
 
-    var isHidden = false
-    var labelIsHidden = true
+    var isHidden by mutableStateOf(false)
+    var labelIsHidden by mutableStateOf(true)
 
     fun getPlayerList(): List<Player> {
         return listOf(
@@ -120,6 +131,9 @@ class Board {
             it.name = "P2-${index + 1}"
         }
     }
+    val drawingStrokes = mutableStateListOf<StrokeData>()
+    var isDrawingMode by mutableStateOf(false)
+    var drawingColor by mutableStateOf(Color.Black)
 }
 
 @Composable
@@ -135,13 +149,89 @@ fun FieldView(board: Board = Board()) {
             modifier = Modifier.fillMaxSize()
         )
 
-        TeamView(teamData = board.teamDataP1, fieldBounds = bounds, modifier = Modifier.fillMaxSize(), isFacingUp = true)
-        TeamView(teamData = board.teamDataP2, fieldBounds = bounds, modifier = Modifier.fillMaxSize(), isFacingUp = false)
+        if (board.isDrawingMode) {
+            TeamView(teamData = board.teamDataP1, fieldBounds = bounds, modifier = Modifier.fillMaxSize(), isFacingUp = true, isDrawingMode = board.isDrawingMode)
+            TeamView(teamData = board.teamDataP2, fieldBounds = bounds, modifier = Modifier.fillMaxSize(), isFacingUp = false, isDrawingMode = board.isDrawingMode)
+
+            DrawingCanvas(
+                strokes = board.drawingStrokes,
+                isDrawingMode = board.isDrawingMode,
+                currentDrawingColor = board.drawingColor,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            DrawingCanvas(
+                strokes = board.drawingStrokes,
+                isDrawingMode = board.isDrawingMode,
+                currentDrawingColor = board.drawingColor,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            TeamView(teamData = board.teamDataP1, fieldBounds = bounds, modifier = Modifier.fillMaxSize(), isFacingUp = true, isDrawingMode = board.isDrawingMode)
+            TeamView(teamData = board.teamDataP2, fieldBounds = bounds, modifier = Modifier.fillMaxSize(), isFacingUp = false, isDrawingMode = board.isDrawingMode)
+        }
     }
 }
 
 @Composable
-fun TeamView(modifier: Modifier = Modifier, teamData: Team = Team(), fieldBounds: FieldBounds, isFacingUp: Boolean = true) {
+fun DrawingCanvas(
+    strokes: MutableList<StrokeData>,
+    isDrawingMode: Boolean,
+    currentDrawingColor: Color,
+    modifier: Modifier = Modifier
+) {
+    var currentPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
+
+    Canvas(
+        modifier = modifier
+            .pointerInput(isDrawingMode, currentDrawingColor) {
+                if (!isDrawingMode) return@pointerInput
+
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    currentPoints = listOf(down.position)
+                    down.consume()
+
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val anyPressed = event.changes.any { it.pressed }
+
+                        if (anyPressed) {
+                            val change = event.changes.first()
+                            currentPoints = currentPoints + change.position
+                            change.consume()
+                        } else {
+                            strokes.add(StrokeData(currentPoints, currentDrawingColor))
+                            currentPoints = emptyList()
+                            break
+                        }
+                    }
+                }
+            }
+    ) {
+        val drawStroke: (List<Offset>, Color) -> Unit = { points, color ->
+            if (points.size > 1) {
+                val path = Path().apply {
+                    moveTo(points[0].x, points[0].y)
+                    for (i in 1 until points.size) {
+                        lineTo(points[i].x, points[i].y)
+                    }
+                }
+                drawPath(
+                    path = path,
+                    color = color,
+                    style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+        }
+
+        strokes.forEach { drawStroke(it.points, it.color) }
+        drawStroke(currentPoints, currentDrawingColor)
+    }
+}
+
+@Composable
+fun TeamView(modifier: Modifier = Modifier, teamData: Team = Team(), fieldBounds: FieldBounds, isFacingUp: Boolean = true, isDrawingMode: Boolean = false) {
     if (teamData.isHidden) return
 
     Box(
@@ -157,7 +247,8 @@ fun TeamView(modifier: Modifier = Modifier, teamData: Team = Team(), fieldBounds
                 labelIsHidden = teamData.labelIsHidden,
                 playerSize = teamData.playerSize,
                 playerZone = teamData.playerZone,
-                isFacingUp = isFacingUp
+                isFacingUp = isFacingUp,
+                isDrawingMode = isDrawingMode
             )
 
 
@@ -173,7 +264,8 @@ fun PlayerView(
     labelIsHidden: Boolean = false,
     playerSize: Float = 1.8f,
     playerZone: Float = 3f,
-    isFacingUp: Boolean = true
+    isFacingUp: Boolean = true,
+    isDrawingMode: Boolean = false
 ) {
 
     var positionX by remember { mutableFloatStateOf(player.position.x) }
@@ -193,7 +285,8 @@ fun PlayerView(
                     (centerY - playerZonePx / 2).roundToInt()
                 )
             }
-            .pointerInput(fieldBounds) {
+            .pointerInput(fieldBounds, isDrawingMode) {
+                if (isDrawingMode) return@pointerInput
                 detectDragGestures { change, dragAmount ->
                     change.consume()
                     positionX += dragAmount.x / fieldBounds.fieldSize.width
