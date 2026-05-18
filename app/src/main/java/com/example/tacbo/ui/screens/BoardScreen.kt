@@ -44,6 +44,13 @@ fun BoardScreen(navController: NavController) {
 
             BoardHeaderView(
                 navController,
+                isDrawingMode = board.isDrawingMode,
+                onClearDrawing = { board.drawingStrokes.clear() },
+                onUndoDrawing = {
+                    if (board.drawingStrokes.isNotEmpty()) {
+                        board.drawingStrokes.removeAt(board.drawingStrokes.size - 1)
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
             )
@@ -62,7 +69,6 @@ fun BoardScreen(navController: NavController) {
                 onToggleP2 = { board.teamDataP2.isHidden = !board.teamDataP2.isHidden },
                 onToggleDrawingMode = { board.isDrawingMode = !board.isDrawingMode },
                 onSelectColor = { board.drawingColor = it },
-                onClearDrawing = { board.drawingStrokes.clear() },
                 onBack = { navController.navigate("landing") }
             )
         }
@@ -70,7 +76,13 @@ fun BoardScreen(navController: NavController) {
 }
 
 @Composable
-fun BoardHeaderView( navController: NavController, modifier: Modifier = Modifier) {
+fun BoardHeaderView(
+    navController: NavController,
+    modifier: Modifier = Modifier,
+    isDrawingMode: Boolean = false,
+    onClearDrawing: () -> Unit = {},
+    onUndoDrawing: () -> Unit = {}
+) {
 
     val systemBars = WindowInsets.systemBars.asPaddingValues()
     val statusBarHeight = systemBars.calculateTopPadding()
@@ -103,6 +115,36 @@ fun BoardHeaderView( navController: NavController, modifier: Modifier = Modifier
             )
         }
         Text(text = stringResource(id = R.string.app_header), fontSize = 20.sp)
+
+        if (isDrawingMode) {
+            Spacer(modifier = Modifier.weight(1f))
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.DarkGray,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clickable { onUndoDrawing() }
+            ) {
+                Text(
+                    text = "Undo",
+                    color = Color.White,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color.DarkGray,
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clickable { onClearDrawing() }
+            ) {
+                Text(
+                    text = "Clear",
+                    color = Color.White,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        }
     }
 }
 
@@ -115,7 +157,6 @@ fun BoardFooterView(
     onToggleP2: () -> Unit = {},
     onToggleDrawingMode: () -> Unit = {},
     onSelectColor: (Color) -> Unit = {},
-    onClearDrawing: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
 
@@ -170,20 +211,6 @@ fun BoardFooterView(
                         .size(48.dp)
                         .clickable { onSelectColor(color) }
                 ) {}
-            }
-
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color.DarkGray,
-                modifier = Modifier
-                    .padding(8.dp)
-                    .clickable { onClearDrawing() }
-            ) {
-                Text(
-                    text = "Clear",
-                    color = Color.White,
-                    modifier = Modifier.padding(16.dp)
-                )
             }
         }
 
